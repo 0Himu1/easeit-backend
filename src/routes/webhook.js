@@ -24,7 +24,7 @@ webhookRouter.post('/', async (req, res) => {
 
     try {
         const savedSettings = await newFbSettings.save();
-        res.status(200).json({ message: 'Settings Added Successfully', settings: savedSettings });
+        res.status(200).json({ message: 'Lead Added Successfully', settings: savedSettings });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'There was a server side error' });

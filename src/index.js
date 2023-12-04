@@ -10,6 +10,7 @@ const { notFoundHandler, errorHandler } = require('./middlewares/common/errorHan
 const loginRouter = require('./routes/loginRouters');
 const settingsRouter = require('./routes/settings/settingsRouter');
 const webhookRouter = require('./routes/webhook');
+const leadRouter = require('./routes/lead');
 
 // Initilize app
 const app = express();
@@ -19,7 +20,7 @@ dotenv.config();
 mongoose
     .connect(process.env.MONGO_CONNECTION_STRING, {})
     .then(() => console.log('Database connection successfull'))
-    .catch((err) => console.log(err));
+    .catch((err) => console.log(err, 'Database connection Error'));
 
 // request process
 app.use(express.json());
@@ -43,6 +44,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/login', loginRouter);
 app.use('/settings', settingsRouter);
 app.use('/webhook', webhookRouter);
+app.use('/lead', leadRouter);
 
 // 404 error handling
 app.use(notFoundHandler);
