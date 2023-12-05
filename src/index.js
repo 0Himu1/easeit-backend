@@ -11,6 +11,7 @@ const loginRouter = require('./routes/loginRouters');
 const settingsRouter = require('./routes/settings/settingsRouter');
 const webhookRouter = require('./routes/webhook');
 const leadRouter = require('./routes/lead');
+const commentRouter = require('./routes/commentRoute');
 
 // Initilize app
 const app = express();
@@ -24,13 +25,15 @@ mongoose
 
 // request process
 app.use(express.json());
+app.use(express.static('public'));
 app.use(express.urlencoded());
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(
     cors({
+        // origin: '*',
         origin: 'http://localhost:3000',
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        credentials: true,
+        // methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        // credentials: true,
     })
 );
 
@@ -45,6 +48,7 @@ app.use('/login', loginRouter);
 app.use('/settings', settingsRouter);
 app.use('/webhook', webhookRouter);
 app.use('/lead', leadRouter);
+app.use('/comment', commentRouter);
 
 // 404 error handling
 app.use(notFoundHandler);

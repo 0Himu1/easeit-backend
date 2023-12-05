@@ -2,15 +2,16 @@
 // extarnal imports
 const express = require('express');
 const { default: mongoose } = require('mongoose');
-const leadSchema = require('../schemas/LeadsSchema');
 const generateCustomerID = require('../helpers/CustomerIdGenerator');
 const customerSchema = require('../schemas/CustomerSchema');
+const upload = require('../config/multerconfig');
+const Lead = require('../schemas/LeadsSchema');
+const { addCommentToLead } = require('../helpers/addNewComment');
 
 // declear router
 const leadRouter = express.Router();
 
 // make a model
-const Lead = new mongoose.model('lead', leadSchema);
 const Customer = new mongoose.model('customer', customerSchema);
 
 // get facebook settings
@@ -36,7 +37,7 @@ leadRouter.post('/', async (req, res) => {
 });
 
 // PUT endpoint
-leadRouter.put('/:id', async (req, res) => {
+leadRouter.put('/:id', upload.array('file', 3), async (req, res) => {
     console.log(req.body);
     // destarcture all property from request body and params
     const { id } = req.params;
@@ -45,7 +46,6 @@ leadRouter.put('/:id', async (req, res) => {
         status,
         meetingData,
         nextMsgData,
-        remark,
         visitCharge,
         nextCallData,
         address,
@@ -53,18 +53,23 @@ leadRouter.put('/:id', async (req, res) => {
         projectLocation,
         workScope,
         positive,
+        comment,
+        creName,
     } = req.body;
+    const fileNames = req?.files?.map((file) => file.filename);
+
+    // update comment
+    await addCommentToLead(id, fileNames, comment, creName);
 
     switch (status) {
         case 'need-support':
             try {
                 // Update Lead Status
-                const meetingRescheduleResult = await Lead.findOneAndUpdate(
+                const savedChangedStatus = await Lead.findOneAndUpdate(
                     { _id: id },
                     {
                         $set: {
                             status,
-                            remark,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }
@@ -73,8 +78,36 @@ leadRouter.put('/:id', async (req, res) => {
                 // Send response
                 if (!res.headersSent) {
                     res.status(200).json({
-                        message: 'Meeting rescheduled Successfully',
-                        updatedLead: meetingRescheduleResult,
+                        message: 'Status Updated Successfully',
+                        updatedLead: savedChangedStatus,
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({
+                    error: 'There was a server side error',
+                    message: error.message,
+                });
+            }
+            break;
+        case 'no-response':
+            try {
+                // Update Lead Status
+                const savedChangedStatus = await Lead.findOneAndUpdate(
+                    { _id: id },
+                    {
+                        $set: {
+                            status,
+                        },
+                    },
+                    { upsert: true, new: true, runValidators: true }
+                );
+
+                // Send response
+                if (!res.headersSent) {
+                    res.status(200).json({
+                        message: 'Status Updated Successfully',
+                        updatedLead: savedChangedStatus,
                     });
                 }
             } catch (error) {
@@ -94,7 +127,6 @@ leadRouter.put('/:id', async (req, res) => {
                         $set: {
                             nextMsgData,
                             status,
-                            remark,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }
@@ -131,7 +163,6 @@ leadRouter.put('/:id', async (req, res) => {
                             CID: lead.CID || generateCustomerID(lead.name, phone),
                             phone,
                             status,
-                            remark,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }
@@ -140,7 +171,7 @@ leadRouter.put('/:id', async (req, res) => {
                 // Send response
                 if (!res.headersSent) {
                     res.status(200).json({
-                        message: 'Meeting rescheduled Successfully',
+                        message: 'Phone number added Successfully',
                         updatedLead: meetingRescheduleResult,
                     });
                 }
@@ -166,9 +197,9 @@ leadRouter.put('/:id', async (req, res) => {
                     { _id: id },
                     {
                         $set: {
+                            status,
                             CID: lead.CID || generateCustomerID(lead.name, phone),
-                            phone,
-                            remark,
+                            phone: phone || lead.phone,
                             nextCallData,
                         },
                     },
@@ -205,7 +236,6 @@ leadRouter.put('/:id', async (req, res) => {
                     {
                         $set: {
                             CID: lead.CID || generateCustomerID(lead.name, phone),
-                            remark,
                             status,
                         },
                     },
@@ -243,11 +273,10 @@ leadRouter.put('/:id', async (req, res) => {
                         { _id: id },
                         {
                             $set: {
-                                phone,
+                                phone: phone || lead.phone,
                                 status,
                                 meetingData,
                                 visitCharge,
-                                remark,
                             },
                         },
                         { upsert: true, new: true, runValidators: true }
@@ -258,7 +287,7 @@ leadRouter.put('/:id', async (req, res) => {
                         CID: lead.CID || generateCustomerID(lead.name, phone),
                         name: lead.name,
                         address,
-                        phone,
+                        phone: phone || lead.phone,
                         projectStatus,
                         projectLocation,
                         workScope,
@@ -296,7 +325,6 @@ leadRouter.put('/:id', async (req, res) => {
                         $set: {
                             meetingData,
                             status,
-                            remark,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }
@@ -329,7 +357,6 @@ leadRouter.put('/:id', async (req, res) => {
                                 date: '',
                             },
                             status,
-                            remark,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }

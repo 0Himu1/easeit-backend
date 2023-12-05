@@ -1,3 +1,4 @@
+/* eslint-disable new-cap */
 const mongoose = require('mongoose');
 
 // - unread
@@ -59,9 +60,14 @@ const leadSchema = mongoose.Schema(
         visitCharge: {
             type: Number,
         },
-        remark: {
-            type: String,
-        },
+        comment: [
+            {
+                images: [String],
+                comment: String,
+                name: String,
+                date: Date,
+            },
+        ],
         meetingData: {
             type: {
                 time: String,
@@ -86,4 +92,6 @@ const leadSchema = mongoose.Schema(
 //     message: 'The name must be unique within the enum values.',
 // });
 
-module.exports = leadSchema;
+const Lead = new mongoose.model('lead', leadSchema);
+
+module.exports = Lead;
