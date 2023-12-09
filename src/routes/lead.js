@@ -1,3 +1,6 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable no-return-await */
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable new-cap */
 // extarnal imports
 const express = require('express');
@@ -6,13 +9,16 @@ const generateCustomerID = require('../helpers/CustomerIdGenerator');
 const customerSchema = require('../schemas/CustomerSchema');
 const upload = require('../config/multerconfig');
 const Lead = require('../schemas/LeadsSchema');
-const { addCommentToLead } = require('../helpers/addNewComment');
+const {
+    addCommentToLead,
+    extractLeadData,
+    createLead,
+    createCustomer,
+} = require('../helpers/leadFunctions');
+const Customer = require('../schemas/CustomerSchema');
 
 // declear router
 const leadRouter = express.Router();
-
-// make a model
-const Customer = new mongoose.model('customer', customerSchema);
 
 // get facebook settings
 leadRouter.get('/', (req, res) => {
@@ -21,16 +27,55 @@ leadRouter.get('/', (req, res) => {
         .catch(() => res.status(500).json({ error: 'There was a server side error' }));
 });
 
-// post facebook settings
-leadRouter.post('/', async (req, res) => {
-    console.log(req.body);
-
-    const newLead = new Lead(req.body);
-
+// post a lead
+leadRouter.post('/', upload.array('images'), async (req, res) => {
+    // console.log(req.body);
     try {
-        const savedLead = await newLead.save();
-        res.status(200).json({ message: 'Lead Added Successfully', lead: savedLead });
+        const leadData = extractLeadData(req.body, req.files);
+        const savedLead = await createLead(leadData);
+        console.log(savedLead);
+
+        // Add a new customer if necessary data comes
+        if (
+            leadData.address
+            && leadData.projectStatus
+            && leadData.projectLocation
+            && leadData.positive
+            && leadData.workScope
+        ) {
+            const savedCustomer = await createCustomer(savedLead, leadData);
+
+            res.status(200).json({
+                message: 'New Lead Added Successfully',
+                lead: savedLead,
+                customer: savedCustomer,
+            });
+        } else {
+            res.status(400).json({ message: 'Data missing in request' });
+        }
     } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'There was a server side error' });
+    }
+});
+
+leadRouter.post('/comment/:id', upload.array('images'), async (req, res) => {
+    try {
+    // destarcture all property from request body and params
+    const leadData = extractLeadData(req.body, req.files);
+    const { id } = req.params;
+
+    // update comment
+    const { comment: savedComment } = await addCommentToLead(
+        id,
+        leadData.fileNames,
+        leadData.remark,
+        leadData.creName
+    );
+
+    // send Response
+    res.status(200).json({ messege: 'comment added successfully', savedComment });
+} catch (error) {
         console.log(error);
         res.status(500).json({ error: 'There was a server side error' });
     }
@@ -38,7 +83,6 @@ leadRouter.post('/', async (req, res) => {
 
 // PUT endpoint
 leadRouter.put('/:id', upload.array('file', 3), async (req, res) => {
-    console.log(req.body);
     // destarcture all property from request body and params
     const { id } = req.params;
     const {
@@ -59,7 +103,7 @@ leadRouter.put('/:id', upload.array('file', 3), async (req, res) => {
     const fileNames = req?.files?.map((file) => file.filename);
 
     // update comment
-    await addCommentToLead(id, fileNames, comment, creName);
+await addCommentToLead(id, fileNames, comment, creName);
 
     switch (status) {
         case 'need-support':

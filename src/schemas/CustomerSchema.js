@@ -1,3 +1,4 @@
+/* eslint-disable new-cap */
 const mongoose = require('mongoose');
 
 const customerSchema = new mongoose.Schema(
@@ -19,25 +20,14 @@ const customerSchema = new mongoose.Schema(
         },
         projectStatus: {
             type: String,
-            enum: ['ready', 'ongoing', 'recently'],
+            enum: ['Ready', 'Ongoing', 'Recently'],
         },
         projectLocation: {
             type: String,
-            enum: ['inside', 'outside'],
+            enum: ['Inside', 'Outside'],
         },
         workScope: {
             type: String,
-            enum: [
-                'kitchen cabinet',
-                'cabinet',
-                'false ceiling',
-                'tv unit',
-                'dinner wagon',
-                'study unit',
-                'full interior',
-                'design consultancy',
-                'customized furniture',
-            ],
         },
         meetingDone: {
             type: Boolean,
@@ -100,4 +90,6 @@ const customerSchema = new mongoose.Schema(
     }
 );
 
-module.exports = customerSchema;
+// make a model
+const Customer = new mongoose.model('customer', customerSchema);
+module.exports = Customer;

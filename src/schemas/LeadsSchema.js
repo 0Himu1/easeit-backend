@@ -22,24 +22,25 @@ const leadSchema = mongoose.Schema(
             type: String,
             enum: [
                 'unread',
-                'need-support',
-                'msg-reschedule',
-                'number-collected',
-                'call-rescheduled',
-                'future-client',
-                'meeting-fixed',
-                'meeting-rescheduled',
-                'cancel-meeting-request',
+                'No Response',
+                'Message Rescheduled',
+                'Need Support',
+                'Number Collected',
+                'Call Reschedule',
+                'Future Client',
+                'Meeting Fixed',
+                'Meeting Reschedule',
+                'Cancel Meeting',
             ],
             default: 'unread',
+            require: true,
         },
         lastMsg: {
             type: String,
-            required: true,
         },
         source: {
             type: String,
-            enum: ['facebook', 'whatsapp', 'web', 'by phone', 'manual'],
+            enum: ['Facebook', 'WhatsApp', 'Web', 'By Phone'],
             required: true,
         },
         nextCallData: {
@@ -49,6 +50,12 @@ const leadSchema = mongoose.Schema(
             },
         },
         nextMsgData: {
+            type: {
+                time: String,
+                date: Date,
+            },
+        },
+        meetingData: {
             type: {
                 time: String,
                 date: Date,
@@ -68,15 +75,13 @@ const leadSchema = mongoose.Schema(
                 date: Date,
             },
         ],
-        meetingData: {
-            type: {
-                time: String,
-                date: Date,
-            },
-        },
         cData: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'customer',
+        },
+        creName: {
+            type: String,
+            require: true,
         },
     },
     {
