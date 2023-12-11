@@ -4,7 +4,6 @@ const Lead = require('../schemas/LeadsSchema');
 const generateCustomerID = require('./CustomerIdGenerator');
 
 const addCommentToLead = async (leadId, images, comment, name) => {
-    console.log(images);
     if (comment && name) {
         try {
             const lead = await Lead.findById(leadId);
@@ -39,6 +38,7 @@ function extractLeadData(body, files) {
         name,
         phone,
         visitCharge,
+        nextMsgData,
         remark,
         meetingData,
         address,
@@ -64,6 +64,7 @@ function extractLeadData(body, files) {
         remark,
         meetingData,
         address,
+        nextMsgData,
         positive,
         projectStatus,
         projectLocation,
@@ -74,7 +75,7 @@ function extractLeadData(body, files) {
 
 async function createLead(leadData) {
     const newLead = new Lead({
-        CID: generateCustomerID(leadData.name, leadData.phone),
+        CID: leadData.phone ? generateCustomerID(leadData.name, leadData.phone) : '',
         status: leadData.status,
         source: leadData.source,
         creName: leadData.creName,
@@ -91,8 +92,9 @@ async function createLead(leadData) {
 }
 
 async function createCustomer(lead, leadData) {
+    // Create customer data
     const customerData = {
-        CID: lead.CID || generateCustomerID(lead.name, leadData.phone),
+        CID: lead.CID || generateCustomerID(leadData.name, leadData.phone),
         name: leadData.name,
         address: leadData.address,
         phone: leadData.phone,
@@ -102,8 +104,16 @@ async function createCustomer(lead, leadData) {
         positive: leadData.positive,
     };
 
+    // Create a new customer
     const newCustomer = new Customer(customerData);
-    return await newCustomer.save();
+
+    // Save the customer
+    const savedCustomer = await newCustomer.save();
+
+    // Update the Lead document with the new customer reference
+    await Lead.findByIdAndUpdate(lead._id, { $set: { cData: savedCustomer._id } });
+
+    return savedCustomer;
 }
 
 module.exports = {

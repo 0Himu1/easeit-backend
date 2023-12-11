@@ -1,109 +1,117 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable no-return-await */
 /* eslint-disable no-underscore-dangle */
-/* eslint-disable new-cap */
-// extarnal imports
 const express = require('express');
-const { default: mongoose } = require('mongoose');
-const generateCustomerID = require('../helpers/CustomerIdGenerator');
-const customerSchema = require('../schemas/CustomerSchema');
 const upload = require('../config/multerconfig');
 const Lead = require('../schemas/LeadsSchema');
+const generateCustomerID = require('../helpers/CustomerIdGenerator');
 const {
-    addCommentToLead,
-    extractLeadData,
-    createLead,
-    createCustomer,
+  addCommentToLead,
+  extractLeadData,
+  createLead,
+  createCustomer,
 } = require('../helpers/leadFunctions');
-const Customer = require('../schemas/CustomerSchema');
 
-// declear router
 const leadRouter = express.Router();
 
-// get facebook settings
-leadRouter.get('/', (req, res) => {
-    Lead.find({})
-        .then((result) => res.status(200).json(result))
-        .catch(() => res.status(500).json({ error: 'There was a server side error' }));
+leadRouter.get('/', async (req, res) => {
+  try {
+    const leads = await Lead.find({});
+    res.status(200).json(leads);
+  } catch (error) {
+    res.status(500).json({ error: 'There was a server side error' });
+  }
 });
 
-// post a lead
 leadRouter.post('/', upload.array('images'), async (req, res) => {
-    // console.log(req.body);
     try {
-        const leadData = extractLeadData(req.body, req.files);
-        const savedLead = await createLead(leadData);
-        console.log(savedLead);
+      const leadData = extractLeadData(req.body, req.files);
 
-        // Add a new customer if necessary data comes
-        if (
-            leadData.address
-            && leadData.projectStatus
-            && leadData.projectLocation
-            && leadData.positive
-            && leadData.workScope
-        ) {
-            const savedCustomer = await createCustomer(savedLead, leadData);
+      // Perform any necessary validation checks
+      // ...
 
-            res.status(200).json({
-                message: 'New Lead Added Successfully',
-                lead: savedLead,
-                customer: savedCustomer,
-            });
-        } else {
-            res.status(400).json({ message: 'Data missing in request' });
-        }
+      const newLead = new Lead({
+        CID: leadData.phone ? generateCustomerID(leadData.name, leadData.phone) : '',
+        status: leadData.status,
+        source: leadData.source,
+        creName: leadData.creName,
+        name: leadData.name,
+        phone: leadData.phone,
+        visitCharge: leadData.visitCharge,
+        meetingData: {
+          time: leadData.time,
+          date: leadData.date,
+        },
+        address: leadData.address,
+        projectStatus: leadData.projectStatus,
+        projectLocation: leadData.projectLocation,
+        workScope: leadData.workScope,
+        positive: leadData.positive,
+      });
+
+      const savedLead = await newLead.save();
+
+      res.status(200).json({
+        message: 'New Lead Added Successfully',
+        lead: savedLead,
+      });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'There was a server side error' });
+      console.error(error);
+
+      // Provide a more specific error message based on the nature of the error
+      let errorMessage = 'There was a server side error';
+      if (error.name === 'ValidationError') {
+        errorMessage = 'Validation error. Please check your input.';
+      }
+
+      res.status(500).json({ error: errorMessage });
     }
-});
+  });
 
 leadRouter.post('/comment/:id', upload.array('images'), async (req, res) => {
-    try {
-    // destarcture all property from request body and params
+  try {
     const leadData = extractLeadData(req.body, req.files);
     const { id } = req.params;
 
-    // update comment
     const { comment: savedComment } = await addCommentToLead(
-        id,
-        leadData.fileNames,
-        leadData.remark,
-        leadData.creName
+      id,
+      leadData.fileNames,
+      leadData.remark,
+      leadData.creName
     );
 
-    // send Response
-    res.status(200).json({ messege: 'comment added successfully', savedComment });
-} catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'There was a server side error' });
-    }
+    res.status(200).json({ message: 'Comment added successfully', savedComment });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'There was a server side error' });
+  }
 });
 
-// PUT endpoint
 leadRouter.put('/:id', upload.array('file', 3), async (req, res) => {
-    // destarcture all property from request body and params
+  try {
     const { id } = req.params;
     const {
-        phone,
+        time,
+        date,
         status,
-        meetingData,
-        nextMsgData,
+        source,
+        creName,
+        name,
+        phone,
         visitCharge,
-        nextCallData,
+        remark,
+        meetingData,
         address,
+        positive,
         projectStatus,
         projectLocation,
         workScope,
-        positive,
-        comment,
-        creName,
-    } = req.body;
-    const fileNames = req?.files?.map((file) => file.filename);
+        fileNames,
+        nextMsgData,
+        nextCallData
+    } = extractLeadData(req.body, req.files);
 
-    // update comment
-await addCommentToLead(id, fileNames, comment, creName);
+    await addCommentToLead(id, fileNames, remark, creName);
 
     switch (status) {
         case 'need-support':
@@ -172,6 +180,7 @@ await addCommentToLead(id, fileNames, comment, creName);
                             nextMsgData,
                             status,
                         },
+
                     },
                     { upsert: true, new: true, runValidators: true }
                 );
@@ -243,7 +252,6 @@ await addCommentToLead(id, fileNames, comment, creName);
                         $set: {
                             status,
                             CID: lead.CID || generateCustomerID(lead.name, phone),
-                            phone: phone || lead.phone,
                             nextCallData,
                         },
                     },
@@ -281,6 +289,7 @@ await addCommentToLead(id, fileNames, comment, creName);
                         $set: {
                             CID: lead.CID || generateCustomerID(lead.name, phone),
                             status,
+                            nextCallData,
                         },
                     },
                     { upsert: true, new: true, runValidators: true }
@@ -321,32 +330,21 @@ await addCommentToLead(id, fileNames, comment, creName);
                                 status,
                                 meetingData,
                                 visitCharge,
+                                projectLocation,
+                                projectStatus,
+                                workScope,
+                                address,
+                                positive,
                             },
                         },
                         { upsert: true, new: true, runValidators: true }
                     );
-
-                    // Add a new Customer in customer collection
-                    const newCustomerData = {
-                        CID: lead.CID || generateCustomerID(lead.name, phone),
-                        name: lead.name,
-                        address,
-                        phone: phone || lead.phone,
-                        projectStatus,
-                        projectLocation,
-                        workScope,
-                        positive,
-                    };
-
-                    const newCustomer = new Customer(newCustomerData);
-                    const savedCustomer = await newCustomer.save();
 
                     // Send response
                     if (!res.headersSent) {
                         res.status(200).json({
                             message: 'Meeting Scheduled Successfully',
                             updatedLead: meetingSetData,
-                            customer: savedCustomer,
                         });
                     }
                 } else {
@@ -424,13 +422,22 @@ await addCommentToLead(id, fileNames, comment, creName);
         default:
             break;
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: 'There was a server side error',
+      message: error.message,
+    });
+  }
 });
 
-// delete facebook settings
-leadRouter.delete('/:id', (req, res) => {
-    Lead.deleteOne({ _id: req.params.id })
-        .then(() => res.status(200).json({ message: 'lead Deleted successfully' }))
-        .catch(() => res.status(500).json({ error: 'There was a server side error' }));
+leadRouter.delete('/:id', async (req, res) => {
+  try {
+    await Lead.deleteOne({ _id: req.params.id });
+    res.status(200).json({ message: 'Lead Deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'There was a server side error' });
+  }
 });
 
 module.exports = leadRouter;

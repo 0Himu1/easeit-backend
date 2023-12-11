@@ -1,14 +1,6 @@
 /* eslint-disable new-cap */
 const mongoose = require('mongoose');
 
-// - unread
-// - need support
-// - msg reschedule
-// - number collected
-// - call reschedule
-// - meeting fixed
-// - cancel meeting request
-
 const leadSchema = mongoose.Schema(
     {
         CID: {
@@ -43,6 +35,7 @@ const leadSchema = mongoose.Schema(
             enum: ['Facebook', 'WhatsApp', 'Web', 'By Phone'],
             required: true,
         },
+
         nextCallData: {
             type: {
                 time: String,
@@ -75,27 +68,77 @@ const leadSchema = mongoose.Schema(
                 date: Date,
             },
         ],
-        cData: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'customer',
-        },
         creName: {
             type: String,
             require: true,
+        },
+        // Customer details
+        address: {
+            type: String,
+        },
+        projectStatus: {
+            type: String,
+            enum: ['Ready', 'Ongoing', 'Recently'],
+        },
+        projectLocation: {
+            type: String,
+            enum: ['Inside', 'Outside'],
+        },
+        workScope: {
+            type: String,
+        },
+        meetingDone: {
+            type: Boolean,
+        },
+        positive: {
+            type: Boolean,
+        },
+        projectConfirmation: {
+            type: String,
+            enum: ['pending', 'confirm', 'cancel'],
+        },
+        reschedule: {
+            type: {
+                time: String,
+                date: Date,
+            },
+        },
+        sqft: {
+            type: Number,
+        },
+        rate: {
+            type: Number,
+        },
+        discount: {
+            type: Number,
+        },
+        totalAmount: {
+            type: Number,
+            default: 0,
+            validate: {
+                validator() {
+                    return this.sqft && this.rate;
+                },
+                message: 'Both sqft and rate are required to calculate totalAmount.',
+            },
+            set(value) {
+                if (this.sqft && this.rate) {
+                    return this.sqft * this.rate * ((100 - this.discount) / 100);
+                }
+                return value;
+            },
+        },
+        mbSheetNo: {
+            type: String,
+        },
+        transportCost: {
+            type: Number,
         },
     },
     {
         timestamps: true,
     }
 );
-
-// leadSchema.path('name').validate({
-//     async validator(value) {
-//         const count = await this.model('setting').countDocuments({ name: value });
-//         return count === 0;
-//     },
-//     message: 'The name must be unique within the enum values.',
-// });
 
 const Lead = new mongoose.model('lead', leadSchema);
 
